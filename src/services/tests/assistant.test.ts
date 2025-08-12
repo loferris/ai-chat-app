@@ -21,7 +21,7 @@ describe('MockAssistant', () => {
     const assistant = new MockAssistant();
     const history = [
       { id: '1', role: 'user', content: 'Hi', timestamp: new Date() },
-     { id: '2', role: 'assistant', content: 'Hello!', timestamp: new Date() },
+      { id: '2', role: 'assistant', content: 'Hello!', timestamp: new Date() },
     ];
 
     const response = await assistant.getResponse('How are you?', history);

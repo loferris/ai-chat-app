@@ -9,20 +9,20 @@ const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
     getItem: vi.fn((key: string) => store[key] || null),
-                          setItem: vi.fn((key: string, value: string) => {
-                            store[key] = value.toString();
-                          }),
-                          removeItem: vi.fn((key: string) => {
-                            delete store[key];
-                          }),
-                          clear: vi.fn(() => {
-                            store = {};
-                          })
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value.toString();
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    }),
   };
 })();
 
 Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock
+  value: localStorageMock,
 });
 
 // Mock scrollIntoView
@@ -35,7 +35,7 @@ Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
 const mocks = vi.hoisted(() => ({
   mockCreateAssistant: vi.fn(() => ({
     getResponse: vi.fn().mockResolvedValue('Mock response'),
-  }))
+  })),
 }));
 
 vi.mock('../../services/assistant', () => ({
@@ -115,7 +115,9 @@ describe('Chat Component', () => {
 
     // Mock assistant to have a delay
     mocks.mockCreateAssistant.mockImplementation(() => ({
-      getResponse: vi.fn(() => new Promise(resolve => setTimeout(() => resolve('Delayed response'), 300))),
+      getResponse: vi.fn(
+        () => new Promise((resolve) => setTimeout(() => resolve('Delayed response'), 300)),
+      ),
     }));
 
     render(<Chat />);
@@ -163,9 +165,11 @@ describe('Chat Component', () => {
     render(<Chat />);
 
     // Use custom matcher for text that might be split across elements
-    expect(screen.getByText((content) => {
-      return content.includes('Connected to OpenRouter API');
-    })).toBeInTheDocument();
+    expect(
+      screen.getByText((content) => {
+        return content.includes('Connected to OpenRouter API');
+      }),
+    ).toBeInTheDocument();
   });
 
   it('toggles between mock and API mode', async () => {
@@ -182,9 +186,11 @@ describe('Chat Component', () => {
     render(<Chat />);
 
     // Initially connected to API (use custom matcher)
-    expect(screen.getByText((content) => {
-      return content.includes('Connected to OpenRouter API');
-    })).toBeInTheDocument();
+    expect(
+      screen.getByText((content) => {
+        return content.includes('Connected to OpenRouter API');
+      }),
+    ).toBeInTheDocument();
 
     // Click toggle button
     const toggleButton = screen.getByRole('button', { name: /Switch to Mock/ });
@@ -202,7 +208,7 @@ describe('Chat Component', () => {
       getResponse: vi.fn().mockResolvedValue({
         response: 'Mock response with cost',
         model: 'test-model',
-        cost: 0.001234
+        cost: 0.001234,
       }),
     }));
 
@@ -220,16 +226,14 @@ describe('Chat Component', () => {
     // Check cost display in the message (look for the cost in a div with specific class)
     const messageCost = await screen.findByText((content, element) => {
       // Look for the cost value in an element with the cost class
-      return content.includes('0.001234') &&
-      element?.classList?.contains('text-purple-300');
+      return content.includes('0.001234') && element?.classList?.contains('text-purple-300');
     });
     expect(messageCost).toBeInTheDocument();
 
     // Check session cost display (look for the fixed position cost tracker)
     const sessionCost = await screen.findByText((content, element) => {
       // Look for cost in the fixed session cost display
-      return content.includes('0.001234') &&
-      element?.parentElement?.classList?.contains('fixed');
+      return content.includes('0.001234') && element?.parentElement?.classList?.contains('fixed');
     });
     expect(sessionCost).toBeInTheDocument();
   });
@@ -288,7 +292,7 @@ describe('Chat Component', () => {
       getResponse: vi.fn().mockResolvedValue({
         response: 'Response with cost',
         model: 'test-model',
-        cost: 0.001
+        cost: 0.001,
       }),
     }));
 
@@ -312,9 +316,12 @@ describe('Chat Component', () => {
     // Set up localStorage with existing values
     vi.mocked(localStorage.getItem).mockImplementation((key: string) => {
       switch (key) {
-        case 'chatCost': return '0.005';
-        case 'chatConversations': return '3';
-        default: return null;
+        case 'chatCost':
+          return '0.005';
+        case 'chatConversations':
+          return '3';
+        default:
+          return null;
       }
     });
 
