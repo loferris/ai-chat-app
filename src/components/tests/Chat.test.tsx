@@ -144,8 +144,8 @@ describe('Chat Component', () => {
     });
 
     // Mock environment variables to simulate no API key
-    vi.stubEnv('VITE_OPENROUTER_API_KEY', '');
-    vi.stubEnv('VITE_USE_MOCK', 'true');
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    vi.stubEnv('USE_MOCK', 'true');
 
     render(<Chat />);
 
@@ -159,8 +159,8 @@ describe('Chat Component', () => {
     });
 
     // Mock environment variables to simulate having an API key
-    vi.stubEnv('VITE_OPENROUTER_API_KEY', 'test-key');
-    vi.stubEnv('VITE_USE_MOCK', 'false');
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+    vi.stubEnv('USE_MOCK', 'false');
 
     render(<Chat />);
 
@@ -180,8 +180,8 @@ describe('Chat Component', () => {
       return null;
     });
 
-    vi.stubEnv('VITE_OPENROUTER_API_KEY', 'test-key');
-    vi.stubEnv('VITE_USE_MOCK', 'false');
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-key');
+    vi.stubEnv('USE_MOCK', 'false');
 
     render(<Chat />);
 
