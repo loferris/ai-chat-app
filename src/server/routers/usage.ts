@@ -1,72 +1,65 @@
+// z import removed as unused
 import { router, publicProcedure } from '../../server/trpc';
+import { TRPCError } from '@trpc/server';
 
 export const usageRouter = router({
-  // Get session statistics
   getSessionStats: publicProcedure.query(async ({ ctx }) => {
-    // Get today's messages with costs
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    try {
+      const [conversationCount, messageCount] = await Promise.all([
+        ctx.db.conversation.count(),
+        ctx.db.message.count(),
+      ]);
 
-    const messages = await ctx.db.message.findMany({
-      where: {
-        createdAt: { gte: today },
-        role: 'assistant', // Only count assistant messages for cost
-        tokens: { not: null },
-      },
-      select: {
-        tokens: true,
-        conversation: {
-          select: { model: true },
-        },
-      },
-    });
+      // Calculate total cost based on message tokens
+      const messages = await ctx.db.message.findMany({
+        select: { tokens: true },
+      });
 
-    // Calculate cost
-    const totalCost = messages.reduce((sum, msg) => {
-      if (!msg.tokens) return sum;
+      const totalTokens = messages.reduce((sum, msg) => sum + (msg.tokens || 0), 0);
+      const totalCost = totalTokens * 0.000002; // Rough cost per token
 
-      const costPerToken: Record<string, number> = {
-        'deepseek-chat': 0.0000001,
-        'anthropic/claude-3-haiku': 0.00000025,
-        'anthropic/claude-3-sonnet': 0.000003,
-        'anthropic/claude-3-opus': 0.000015,
+      return {
+        conversationCount,
+        messageCount,
+        totalTokens,
+        totalCost,
       };
-
-      const cost = msg.tokens * (costPerToken[msg.conversation.model] || 0.000001);
-      return sum + cost;
-    }, 0);
-
-    // Get conversation count
-    const conversationCount = await ctx.db.conversation.count({
-      where: {
-        createdAt: { gte: today },
-      },
-    });
-
-    return {
-      totalCost,
-      conversationCount,
-      messageCount: messages.length,
-    };
+    } catch (error) {
+      console.error('Error fetching session stats:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch session statistics',
+        cause: error,
+      });
+    }
   }),
 
-  // Get usage by model
   getModelUsage: publicProcedure.query(async ({ ctx }) => {
-    const messages = await ctx.db.message.groupBy({
-      by: ['conversationId'],
-      _count: {
-        conversationId: true,
-      },
-      where: {
-        role: 'assistant',
-      },
-    });
+    try {
+      const messages = await ctx.db.message.groupBy({
+        by: ['role'],
+        _count: {
+          role: true,
+        },
+      });
 
-    // This is a simplified version - you might want to aggregate by model
-    // For now, just return basic stats
-    return {
-      totalMessages: messages.length,
-      // Add more detailed model usage stats as needed
-    };
+      const totalMessages = messages.reduce((sum, group) => sum + group._count.role, 0);
+
+      return {
+        totalMessages,
+        byRole: messages.map((group) => ({
+          role: group.role,
+          count: group._count.role,
+          percentage: totalMessages > 0 ? (group._count.role / totalMessages) * 100 : 0,
+        })),
+      };
+    } catch (error) {
+      console.error('Error fetching model usage:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to fetch model usage statistics',
+        cause: error,
+      });
+    }
   }),
 });

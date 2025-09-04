@@ -1,65 +1,156 @@
 // src/server/routers/messages.ts
 import { z } from 'zod';
-import { router, publicProcedure } from '../../server/trpc'; // Use 'router' instead
+import { router, publicProcedure } from '../../server/trpc';
+import { TRPCError } from '@trpc/server';
 
 export const messagesRouter = router({
-  // Use 'router' instead of 'createTRPCRouter'
-  // Add message to conversation
   create: publicProcedure
     .input(
       z.object({
-        conversationId: z.string(),
-        role: z.enum(['user', 'assistant', 'system']),
-        content: z.string(),
-        tokens: z.number().optional(),
+        conversationId: z.string().min(1, 'Conversation ID is required'),
+        role: z.enum(['user', 'assistant']),
+        content: z.string()
+          .min(1, 'Message content cannot be empty')
+          .max(10000, 'Message content too long (max 10,000 characters)'),
+        tokens: z.number().min(0, 'Token count must be non-negative'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Update conversation's updatedAt timestamp
-      await ctx.db.conversation.update({
-        where: { id: input.conversationId },
-        data: { updatedAt: new Date() },
-      });
+      try {
+        // Validate conversation exists
+        const conversation = await ctx.db.conversation.findUnique({
+          where: { id: input.conversationId },
+        });
 
-      return ctx.db.message.create({
-        data: {
-          conversationId: input.conversationId,
-          role: input.role,
-          content: input.content,
-          tokens: input.tokens,
-        },
-      });
+        if (!conversation) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Conversation not found',
+          });
+        }
+
+        return await ctx.db.message.create({
+          data: input,
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+
+        console.error('Error creating message:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to create message',
+          cause: error,
+        });
+      }
     }),
 
-  // Get messages for conversation (alternative to including in conversation query)
   getByConversation: publicProcedure
-    .input(z.object({ conversationId: z.string() }))
+    .input(z.object({ conversationId: z.string().min(1, 'Conversation ID is required') }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.message.findMany({
-        where: { conversationId: input.conversationId },
-        orderBy: { createdAt: 'asc' },
-      });
+      try {
+        // Validate conversation exists
+        const conversation = await ctx.db.conversation.findUnique({
+          where: { id: input.conversationId },
+        });
+
+        if (!conversation) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Conversation not found',
+          });
+        }
+
+        return await ctx.db.message.findMany({
+          where: { conversationId: input.conversationId },
+          orderBy: { createdAt: 'asc' },
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+
+        console.error('Error fetching messages:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to fetch messages',
+          cause: error,
+        });
+      }
     }),
 
-  // Update message (for future editing features)
   update: publicProcedure
     .input(
       z.object({
-        id: z.string(),
-        content: z.string(),
+        id: z.string().min(1, 'Message ID is required'),
+        content: z.string()
+          .min(1, 'Message content cannot be empty')
+          .max(10000, 'Message content too long (max 10,000 characters)'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.message.update({
-        where: { id: input.id },
-        data: { content: input.content },
-      });
+      try {
+        // Validate message exists
+        const message = await ctx.db.message.findUnique({
+          where: { id: input.id },
+        });
+
+        if (!message) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Message not found',
+          });
+        }
+
+        return await ctx.db.message.update({
+          where: { id: input.id },
+          data: { content: input.content },
+        });
+      } catch (error) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+
+        console.error('Error updating message:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to update message',
+          cause: error,
+        });
+      }
     }),
 
-  // Delete message
-  delete: publicProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
-    return ctx.db.message.delete({
-      where: { id: input.id },
-    });
+  delete: publicProcedure.input(z.string().min(1, 'Message ID is required')).mutation(async ({ ctx, input: messageId }) => {
+    try {
+      // Validate message exists
+      const message = await ctx.db.message.findUnique({
+        where: { id: messageId },
+      });
+
+      if (!message) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Message not found',
+        });
+      }
+
+      await ctx.db.message.delete({
+        where: { id: messageId },
+      });
+
+      return { success: true };
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
+      console.error('Error deleting message:', error);
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Failed to delete message',
+        cause: error,
+      });
+    }
   }),
 });

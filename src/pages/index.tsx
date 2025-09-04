@@ -1,10 +1,19 @@
 import React from 'react';
 import { Chat } from '../components/chat/Chat';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className='min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 to-indigo-100'>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log errors to console for debugging
+        console.error('Page-level error:', error, errorInfo);
+        
+        // You can add additional error reporting here
+        // For example, sending to an error reporting service
+      }}
+    >
       <Chat />
-    </div>
+    </ErrorBoundary>
   );
 }

@@ -12,13 +12,29 @@ function getBaseUrl() {
 export const trpc = createTRPCNext<AppRouter>({
   config() {
     return {
-      transformer: superjson,
       links: [
         httpBatchLink({
           url: `${getBaseUrl()}/api/trpc`,
+          transformer: superjson,
+          headers() {
+            // Generate or get session ID from localStorage
+            let sessionId = '';
+            if (typeof window !== 'undefined') {
+              sessionId = localStorage.getItem('session-id') || '';
+              if (!sessionId) {
+                sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                localStorage.setItem('session-id', sessionId);
+              }
+            }
+            
+            return {
+              'x-session-id': sessionId,
+            };
+          },
         }),
       ],
     };
   },
   ssr: false,
+  transformer: superjson,
 });
