@@ -6,7 +6,7 @@ An intelligent AI chat application that maintains conversation context, tracks c
 
 ![Demo GIF placeholder - Show the app in action](https://via.placeholder.com/800x400/1a1a1a/ffffff?text=Demo+Video+Goes+Here)
 
-[🚀 **Try the Live Demo**](https://your-app.vercel.app) | [📖 **Read the Blog Post**](https://your-blog.com/building-ai-chat-app)
+[🚀 **Try the Live Demo**](https://your-app.vercel.app) | [📖 **Documentation**](docs/) | [📖 **Read the Blog Post**](https://your-blog.com/building-ai-chat-app)
 
 ## 🎯 **Why This Exists**
 
@@ -166,6 +166,14 @@ npm run coverage  # Coverage report
 - [ ] Proactive suggestions
 
 **The E2B Integration Opportunity**: This architecture is designed for safe agent workflows. Imagine AI that can write Python code, execute it in E2B sandboxes, and display results inline—all while maintaining conversation context and cost tracking.
+
+## 📚 **Documentation**
+
+Detailed guides and technical documentation are available in the [`docs/`](docs/) folder:
+
+- **[Architecture Summary](docs/architecture-summary.md)** - Current implementation overview
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete deployment guide
+- **[Agent Architecture Plan](docs/agent-architecture-plan.md)** - Future system design
 
 ## 🤝 **Contributing**
 
