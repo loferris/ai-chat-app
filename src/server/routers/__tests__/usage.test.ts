@@ -8,6 +8,19 @@ describe('Usage Router', () => {
     vi.clearAllMocks();
     
     mockContext = {
+      req: {
+        headers: {
+          'user-agent': 'test-agent',
+          'x-session-id': 'test-session',
+        },
+      },
+      res: {
+        setHeader: vi.fn(),
+      },
+      user: {
+        id: 'test-user',
+        sessionId: 'test-session',
+      },
       db: {
         conversation: {
           count: vi.fn(),

@@ -118,6 +118,8 @@ export class OpenRouterAssistant implements Assistant {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
     model: string
   ): Promise<string> {
+    const startTime = Date.now();
+    
     try {
       if (typeof window !== 'undefined') {
         // Client-side fallback

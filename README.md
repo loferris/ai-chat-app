@@ -35,7 +35,7 @@ An intelligent AI chat application that maintains conversation context, tracks c
 
 ### 🏗️ **Production-Ready Architecture**
 - End-to-end type safety with TypeScript
-- Comprehensive test suite (113/162 tests passing)
+- Comprehensive test suite (162/162 tests passing)
 - Reactive UI updates with React Query
 - Graceful error handling and validation
 
@@ -140,7 +140,7 @@ npm run test:ui   # Visual test runner
 npm run coverage  # Coverage report
 ```
 
-**Test Coverage**: 113/162 tests passing with coverage across:
+**Test Coverage**: 162/162 tests passing with full coverage across:
 - API endpoints (tRPC routers)
 - React components
 - Database operations
