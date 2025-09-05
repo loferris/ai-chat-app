@@ -62,10 +62,20 @@ export const messagesRouter = router({
           });
         }
 
-        return await ctx.db.message.findMany({
+        const messages = await ctx.db.message.findMany({
           where: { conversationId: input.conversationId },
           orderBy: { createdAt: 'asc' },
         });
+
+        // Transform database objects to match frontend interface
+        return messages.map(message => ({
+          id: message.id,
+          role: message.role as 'user' | 'assistant',
+          content: message.content,
+          timestamp: message.createdAt, // Map createdAt to timestamp
+          model: undefined, // Not stored in database yet
+          cost: undefined, // Not stored in database yet
+        }));
       } catch (error) {
         if (error instanceof TRPCError) {
           throw error;

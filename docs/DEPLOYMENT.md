@@ -1,140 +1,184 @@
 # Deployment Guide
 
-This guide covers deploying the chat application to various platforms.
+This guide covers deploying the chat application in both demo and production modes.
 
-## Prerequisites
+## 🎯 Demo Deployment (Recommended for Showcase)
 
-- Node.js 18+
-- OpenRouter API key (optional - app works with mock assistant)
-- Git repository access
+Perfect for creating screen recordings, showcasing features, or testing without API costs.
 
-## Environment Setup
+### Quick Deploy to Vercel
 
-1. **Copy environment configuration:**
+1. **Push to GitHub:**
    ```bash
-   cp .env.example .env.local
+   git add .
+   git commit -m "Ready for demo deployment"
+   git push origin main
    ```
 
-2. **Configure API key (optional):**
-   - Get OpenRouter API key from: https://openrouter.ai/keys
-   - Update `OPENROUTER_API_KEY` in `.env.local`
-   - Format: `sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+2. **Deploy to Vercel:**
+   - Connect your GitHub repo to Vercel
+   - Vercel will automatically detect the Next.js framework
+   - The `vercel.json` configuration will force demo mode
 
-3. **Set environment:**
+3. **Demo Mode Features:**
+   - ✅ **Mock AI Assistant**: No API keys needed
+   - ✅ **Smart Responses**: Contextual demo responses
+   - ✅ **Full Functionality**: All features work perfectly
+   - ✅ **No Costs**: Zero API usage charges
+   - ✅ **Sample Data**: Pre-loaded demo conversations
+
+### Demo Mode Configuration
+
+The app automatically detects demo mode through:
+- `DEMO_MODE=true` in Vercel environment
+- `VERCEL_ENV=preview` for preview deployments
+- Mock assistant provides intelligent responses
+
+## 🚀 Production Deployment
+
+For real usage with actual AI models.
+
+### Environment Variables
+
+Create these in your Vercel dashboard:
+
+```bash
+# Required for production
+OPENROUTER_API_KEY=sk-or-v1-your-actual-api-key
+DEMO_MODE=false
+NODE_ENV=production
+
+# Optional configuration
+SITE_NAME=your-app-name
+SITE_URL=https://your-domain.com
+DATABASE_URL=your-production-database-url
+SESSION_SECRET=your-random-secret-key
+```
+
+### Production Setup Steps
+
+1. **Get OpenRouter API Key:**
+   - Visit [OpenRouter.ai](https://openrouter.ai/keys)
+   - Create account and generate API key
+   - Copy the key (starts with `sk-or-v1-`)
+
+2. **Update Vercel Environment:**
+   - Go to your Vercel project dashboard
+   - Navigate to Settings → Environment Variables
+   - Add the variables above
+
+3. **Deploy:**
    ```bash
-   NODE_ENV=production
+   git push origin main
    ```
 
-## Deployment Options
+## 🔄 Switching Between Modes
 
-### Vercel (Recommended)
+### Demo → Production
+1. Update Vercel environment variables
+2. Set `DEMO_MODE=false`
+3. Add `OPENROUTER_API_KEY`
+4. Redeploy
 
-```bash
-# Install Vercel CLI
-npm install -g vercel
+### Production → Demo
+1. Update Vercel environment variables
+2. Set `DEMO_MODE=true`
+3. Remove or comment out `OPENROUTER_API_KEY`
+4. Redeploy
 
-# Deploy
-vercel --prod
-```
+## 📊 Demo Mode Features
 
-**Environment Variables for Vercel:**
-```
-DATABASE_URL="file:./prisma/dev.db"
-OPENROUTER_API_KEY="your-api-key-here"
-NODE_ENV="production"
-```
+### Smart Mock Assistant
+The demo assistant provides contextual responses:
+- **Welcome messages**: Explains demo features
+- **Export questions**: Describes export functionality
+- **Technical queries**: Explains app architecture
+- **General chat**: Engaging conversation flow
 
-### Docker
+### Sample Conversations
+Pre-loaded demo conversations showcase:
+- Feature explanations
+- Technical capabilities
+- UI/UX demonstrations
+- Export functionality
 
-```bash
-# Build
-npm run build
+### Cost Tracking
+- Shows realistic cost estimates
+- Demonstrates usage monitoring
+- No actual API charges
 
-# Create Dockerfile
-cat > Dockerfile << EOF
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-EOF
-
-# Build and run
-docker build -t chat-app .
-docker run -p 3000:3000 chat-app
-```
-
-### Traditional Hosting
-
-```bash
-# Build the application
-npm run build
-
-# Start production server
-npm start
-```
-
-## Database Setup
-
-### Development (SQLite)
-```bash
-npx prisma generate
-npx prisma db push
-```
-
-### Production (PostgreSQL)
-1. Set up PostgreSQL database
-2. Update `DATABASE_URL` in environment variables
-3. Run migrations: `npx prisma db push`
-
-## Features
+## 🛠️ Local Development
 
 ### Demo Mode
-- App works without API keys using mock assistant
-- Perfect for showcasing functionality
-- Enable by setting `DEMO_MODE=true`
+```bash
+# Set demo mode
+echo "DEMO_MODE=true" > .env.local
+npm run dev
+```
 
 ### Production Mode
-- Requires OpenRouter API key
-- Real AI responses
-- Full functionality
+```bash
+# Set up environment
+cp env.example .env.local
+# Edit .env.local with your API key
+npm run dev
+```
 
-## Security Features
+## 📱 Screen Recording Tips
 
-- Input validation (10K character limit)
-- Rate limiting (30 messages/min, 100 API calls/min)
-- Session-based access control
-- Database transactions
-- Structured logging
+For creating demo videos:
 
-## Monitoring
+1. **Use Demo Mode**: Perfect for screen recordings
+2. **Sample Conversations**: Pre-loaded content to showcase
+3. **Export Feature**: Great for demonstrating functionality
+4. **Responsive Design**: Test on different screen sizes
+5. **Error Handling**: Show graceful error states
 
-- Health check endpoint: `/api/health`
-- Database connection monitoring
-- Error logging and handling
-
-## Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-1. **Build failures**
-   - Run `npm run test` to check for issues
-   - Clear cache: `rm -rf .next node_modules && npm install`
+**Demo mode not working:**
+- Check `DEMO_MODE=true` in environment
+- Verify `vercel.json` configuration
+- Clear browser cache
 
-2. **Database connection errors**
-   - Verify `DATABASE_URL` format
-   - Ensure database is running
-   - Check file permissions for SQLite
+**Production API errors:**
+- Verify API key format (`sk-or-v1-...`)
+- Check OpenRouter account status
+- Review rate limits
 
-3. **API key issues**
-   - Ensure key starts with `sk-or-v1-`
-   - Check for extra spaces in environment variables
+**Database issues:**
+- SQLite works for demo
+- Use proper database for production
+- Check `DATABASE_URL` format
 
-## Support
+## 📈 Performance
 
-- **OpenRouter API**: https://openrouter.ai/docs
-- **Next.js deployment**: https://nextjs.org/docs/deployment
-- **Prisma database**: https://prisma.io/docs
+### Demo Mode
+- Fast responses (no API calls)
+- Minimal resource usage
+- Perfect for showcasing
+
+### Production Mode
+- Real AI responses
+- API rate limiting
+- Cost monitoring
+- Scalable architecture
+
+## 🔒 Security
+
+### Demo Mode
+- No sensitive data
+- Safe for public sharing
+- No API key exposure
+
+### Production Mode
+- Secure API key storage
+- Rate limiting enabled
+- Input validation
+- Session management
+
+---
+
+**Ready to deploy?** Start with demo mode for showcasing, then switch to production when ready for real usage! 🚀

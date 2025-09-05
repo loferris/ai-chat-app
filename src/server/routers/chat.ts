@@ -46,11 +46,33 @@ export const chatRouter = router({
           });
         }
 
+        // Get conversation history for context
+        const conversationHistory = await ctx.db.message.findMany({
+          where: { conversationId },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            role: true,
+            content: true,
+          },
+        });
+
+        console.log('Chat request:', {
+          content,
+          conversationId,
+          historyLength: conversationHistory.length,
+          isDemoMode: process.env.DEMO_MODE === 'true',
+        });
+
         // Create assistant service
         const assistant = createAssistant({});
 
-        // Get response from assistant service
-        const result = await assistant.getResponse(content);
+        // Get response from assistant service with conversation history
+        const result = await assistant.getResponse(content, conversationHistory);
+        
+        console.log('Assistant response:', {
+          response: typeof result === 'string' ? result : result.response,
+          model: typeof result === 'string' ? 'unknown' : result.model,
+        });
 
         // Handle different response types
         const response = typeof result === 'string' ? result : result.response;
@@ -65,8 +87,10 @@ export const chatRouter = router({
         }
 
         // Use database transaction to ensure consistency
+        console.log('Starting database transaction...');
         const dbResult = await ctx.db.$transaction(async (tx) => {
           // Save user message to database
+          console.log('Creating user message...');
           const userMessage = await tx.message.create({
             data: {
               conversationId,
@@ -75,6 +99,7 @@ export const chatRouter = router({
               tokens: Math.ceil(content.length / 4), // Rough token estimation
             },
           });
+          console.log('User message created:', userMessage.id);
 
           // Check if this is the first message in the conversation
           const messageCount = await tx.message.count({
@@ -102,6 +127,7 @@ export const chatRouter = router({
           }
 
           // Save assistant message to database
+          console.log('Creating assistant message...');
           const assistantMessage = await tx.message.create({
             data: {
               conversationId,
@@ -110,9 +136,11 @@ export const chatRouter = router({
               tokens: Math.ceil(response.length / 4),
             },
           });
+          console.log('Assistant message created:', assistantMessage.id);
 
           return { userMessage, assistantMessage };
         });
+        console.log('Database transaction completed');
 
         return {
           id: dbResult.assistantMessage.id,
@@ -131,10 +159,38 @@ export const chatRouter = router({
         // Log the error for debugging
         console.error('Error in sendMessage:', error);
 
-        // Return a generic error
+        // Provide more specific error messages based on error type
+        let userMessage = 'Something went wrong. Please try again.';
+        let errorCode: 'INTERNAL_SERVER_ERROR' | 'GATEWAY_TIMEOUT' | 'TOO_MANY_REQUESTS' | 'UNAUTHORIZED' | 'PAYMENT_REQUIRED' | 'BAD_REQUEST' = 'INTERNAL_SERVER_ERROR';
+
+        if (error instanceof Error) {
+          const errorMessage = error.message.toLowerCase();
+          
+          // Network/API related errors
+          if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
+            userMessage = 'The AI service is taking too long to respond. Please try again in a moment.';
+            errorCode = 'GATEWAY_TIMEOUT';
+          } else if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
+            userMessage = 'Too many requests. Please wait a moment before trying again.';
+            errorCode = 'TOO_MANY_REQUESTS';
+          } else if (errorMessage.includes('unauthorized') || errorMessage.includes('api key')) {
+            userMessage = 'AI service configuration issue. Please check your settings.';
+            errorCode = 'UNAUTHORIZED';
+          } else if (errorMessage.includes('quota') || errorMessage.includes('billing')) {
+            userMessage = 'AI service quota exceeded. Please check your account or try again later.';
+            errorCode = 'PAYMENT_REQUIRED';
+          } else if (errorMessage.includes('database') || errorMessage.includes('connection')) {
+            userMessage = 'Database connection issue. Please try again in a moment.';
+            errorCode = 'INTERNAL_SERVER_ERROR';
+          } else if (errorMessage.includes('validation') || errorMessage.includes('invalid')) {
+            userMessage = 'Invalid request. Please check your message and try again.';
+            errorCode = 'BAD_REQUEST';
+          }
+        }
+
         throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to send message. Please try again.',
+          code: errorCode,
+          message: userMessage,
           cause: error,
         });
       }

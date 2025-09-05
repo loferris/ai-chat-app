@@ -8,7 +8,9 @@
     "DEMO_MODE": "true",
     "NODE_ENV": "production",
     "DATABASE_URL": "file:./prisma/dev.db",
-    "NEXT_PUBLIC_DEMO_MODE": "true"
+    "NEXT_PUBLIC_DEMO_MODE": "true",
+    "SITE_NAME": "chat-app-demo",
+    "LOG_LEVEL": "info"
   },
   "build": {
     "env": {

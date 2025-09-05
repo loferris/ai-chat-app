@@ -56,9 +56,33 @@ export class OpenRouterAssistant implements Assistant {
     } catch (error) {
       console.error('Error in OpenRouterAssistant.getResponse:', error);
       
+      // Provide more specific error messages based on error type
+      let errorMessage = 'Sorry, I encountered an error. Please try again.';
+      
+      if (error instanceof Error) {
+        const errorMsg = error.message.toLowerCase();
+        
+        if (errorMsg.includes('timeout') || errorMsg.includes('abort')) {
+          errorMessage = 'The AI service is taking too long to respond. Please try again in a moment.';
+        } else if (errorMsg.includes('rate limit') || errorMsg.includes('too many requests')) {
+          errorMessage = 'Too many requests. Please wait a moment before trying again.';
+        } else if (errorMsg.includes('unauthorized') || errorMsg.includes('api key')) {
+          errorMessage = 'AI service configuration issue. Please check your API settings.';
+        } else if (errorMsg.includes('quota') || errorMsg.includes('billing')) {
+          errorMessage = 'AI service quota exceeded. Please check your account or try again later.';
+        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+          errorMessage = 'Network connection issue. Please check your internet connection and try again.';
+        }
+      }
+      
+      // For demo mode, provide a more helpful message
+      if (DEMO_CONFIG.FORCE_MOCK_ASSISTANT || DEMO_CONFIG.IS_DEMO) {
+        errorMessage = 'Demo mode error. This is a showcase - in production, this would connect to real AI models.';
+      }
+      
       // Return a fallback response instead of throwing
       return {
-        response: 'Sorry, I encountered an error. Please try again.',
+        response: errorMessage,
         model: 'error',
         cost: 0,
       };
@@ -312,12 +336,23 @@ Feel free to ask me about the app's functionality, technical details, or just ha
     return responses[Math.floor(Math.random() * responses.length)];
   }
 
-  async getResponse(userMessage: string): Promise<AssistantResponse> {
+  async getResponse(userMessage: string, conversationHistory?: Array<{ role: string; content: string }>): Promise<AssistantResponse> {
     // Simulate realistic response time
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
     
+    // Create a response that clearly references the current message
+    const responses = [
+      `I understand you're asking about "${userMessage}". This is a demo response - in production, I'd provide a helpful answer!`,
+      `Thanks for your message: "${userMessage}". This mock assistant shows the chat interface working properly.`,
+      `You wrote: "${userMessage}" - I'm responding to show the chat flow is working correctly in demo mode.`,
+      `Got it! You said "${userMessage}". This is a placeholder response from the demo assistant.`,
+      `I see your message: "${userMessage}". The real version would connect to AI models for actual help!`
+    ];
+    
+    const response = responses[Math.floor(Math.random() * responses.length)];
+    
     return {
-      response: this.getSmartMockResponse(userMessage),
+      response,
       model: 'demo-assistant-v1',
       cost: 0.001,
     };
