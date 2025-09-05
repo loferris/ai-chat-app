@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, startTransition } from 'react';
 import { format } from 'date-fns';
 import { trpc } from '../../lib/trpc/client';
 import { useChatStore, useIsConversationReady, useCanSendMessage, useShouldShowRetry } from '../../stores/chatStore';
@@ -51,11 +51,19 @@ export const Chat: React.FC = () => {
   const { 
     data: messages = [], 
     isLoading: messagesLoading,
-    error: messagesError 
+    error: messagesError,
+    refetch: refetchMessages
   } = trpc.messages.getByConversation.useQuery(
     { conversationId: currentConversationId || '' },
     { enabled: !!currentConversationId },
   );
+  
+  // Error logging for production monitoring
+  React.useEffect(() => {
+    if (messagesError) {
+      console.error('Failed to load messages:', messagesError);
+    }
+  }, [messagesError]);
 
   // Create conversation mutation
   const createConversationMutation = trpc.conversations.create.useMutation({
@@ -64,7 +72,6 @@ export const Chat: React.FC = () => {
       clearError();
     },
     onSuccess: (data) => {
-      console.log('Conversation created successfully:', data);
       setCurrentConversation(data.id);
       setCreatingConversation(false);
       utils.conversations.list.invalidate();
@@ -78,11 +85,19 @@ export const Chat: React.FC = () => {
 
   // Send message mutation
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
-    onSuccess: (data) => {
-      console.log('Message sent successfully:', data);
-      finishMessageSend();
-      utils.messages.getByConversation.invalidate();
-      utils.conversations.list.invalidate();
+    onSuccess: async (data) => {
+      // Invalidate queries to refresh the UI
+      await utils.messages.getByConversation.invalidate({ conversationId: currentConversationId || '' });
+      await utils.messages.invalidate();
+      await refetchMessages();
+      await utils.conversations.list.invalidate();
+      
+      // Wait briefly for queries to refetch, then clear loading state
+      setTimeout(() => {
+        startTransition(() => {
+          finishMessageSend();
+        });
+      }, 200);
     },
     onError: (error) => {
       console.error('Failed to send message:', error);
@@ -101,7 +116,6 @@ export const Chat: React.FC = () => {
       } else if (error?.data?.code === 'BAD_REQUEST') {
         errorMessage = 'Invalid request. Please try rephrasing your message.';
       } else if (error?.data?.code === 'INTERNAL_SERVER_ERROR') {
-        // Check for specific error patterns in the message
         const message = error.message?.toLowerCase() || '';
         if (message.includes('database') || message.includes('connection')) {
           errorMessage = 'Database connection issue. Please try again in a moment.';
@@ -136,11 +150,6 @@ export const Chat: React.FC = () => {
 
   // Auto-create first conversation on app load
   useEffect(() => {
-    console.log('Checking conversation creation:', {
-      hasConversations: conversations.length > 0,
-      currentConversationId,
-      isCreatingConversation,
-    });
 
     // Only try to create if we don't have a conversation and aren't creating one
     if (
@@ -184,23 +193,14 @@ export const Chat: React.FC = () => {
   // Handle sending a message
   const handleSendMessage = async () => {
     if (!canSendMessage || !currentConversationId) {
-      console.log('Send blocked:', {
-        canSend: canSendMessage,
-        hasConversation: !!currentConversationId,
-      });
       return;
     }
 
     const messageContent = input.trim();
-    console.log('Sending message:', {
-      content: messageContent,
-      conversationId: currentConversationId,
-    });
+    if (!messageContent) return;
 
-    // Use Zustand action to handle state updates
+    // Update state and send message
     startMessageSend(messageContent);
-    
-    // Send the message
     sendMessageMutation.mutate({
       content: messageContent,
       conversationId: currentConversationId,
@@ -238,7 +238,6 @@ export const Chat: React.FC = () => {
 
   // Select conversation
   const handleSelectConversation = (conversationId: string) => {
-    console.log('Selecting conversation:', conversationId);
     setCurrentConversation(conversationId);
     setInput('');
     clearError();
@@ -411,7 +410,7 @@ export const Chat: React.FC = () => {
             <>
               {messages.map((message) => (
                 <div
-                  key={message.id}
+                  key={`${message.id}-${message.timestamp}`}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-2`}
                   role={message.role === 'user' ? 'status' : 'complementary'}
                   aria-atomic='true'
@@ -437,39 +436,27 @@ export const Chat: React.FC = () => {
                 </div>
               ))}
 
-              {/* Loading indicator */}
+              {/* Enhanced Loading indicator for real AI */}
               {isLoading && (
                 <div className='flex justify-start' aria-live='polite'>
                   <div className='bg-gradient-to-r from-indigo-50 to-purple-50 border border-purple-200 px-4 py-3 rounded-2xl shadow-sm'>
                     <div className='flex items-center space-x-3'>
                       <div className='flex space-x-1'>
-                        <div className='w-2 h-2 bg-pink-400 rounded-full animate-bounce'></div>
-                        <div
-                          className='w-2 h-2 bg-purple-400 rounded-full animate-bounce'
-                          style={{ animationDelay: '0.1s' }}
-                        ></div>
-                        <div
-                          className='w-2 h-2 bg-indigo-400 rounded-full animate-bounce'
-                          style={{ animationDelay: '0.2s' }}
-                        ></div>
+                        <div className='w-2 h-2 bg-purple-500 rounded-full animate-bounce' style={{animationDelay: '0ms'}}></div>
+                        <div className='w-2 h-2 bg-purple-500 rounded-full animate-bounce' style={{animationDelay: '150ms'}}></div>
+                        <div className='w-2 h-2 bg-purple-500 rounded-full animate-bounce' style={{animationDelay: '300ms'}}></div>
                       </div>
-                      <span data-testid='loading-indicator' className='text-sm text-purple-600'>
-                        Assistant is typing...
-                      </span>
-                      <span className='sr-only'>Assistant is typing a response</span>
+                      <div className='flex flex-col'>
+                        <span className='text-sm text-purple-600'>AI is thinking...</span>
+                        <span className='text-xs text-purple-400'>This may take up to 30 seconds</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </>
-          ) : (
-            <div className='text-center text-gray-500 py-12'>
-              <div className='text-6xl mb-4'>🌈</div>
-              <p className='text-xl font-medium text-gray-700'>Welcome to your colorful chat!</p>
-              <p className='mt-2 text-gray-500'>Start a conversation by typing a message below</p>
-            </div>
-          )}
+          ) : null}
         </div>
 
         {/* Error Display */}

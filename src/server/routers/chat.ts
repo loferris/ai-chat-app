@@ -56,23 +56,9 @@ export const chatRouter = router({
           },
         });
 
-        console.log('Chat request:', {
-          content,
-          conversationId,
-          historyLength: conversationHistory.length,
-          isDemoMode: process.env.DEMO_MODE === 'true',
-        });
-
-        // Create assistant service
+        // Create assistant service and get response
         const assistant = createAssistant({});
-
-        // Get response from assistant service with conversation history
         const result = await assistant.getResponse(content, conversationHistory);
-        
-        console.log('Assistant response:', {
-          response: typeof result === 'string' ? result : result.response,
-          model: typeof result === 'string' ? 'unknown' : result.model,
-        });
 
         // Handle different response types
         const response = typeof result === 'string' ? result : result.response;
@@ -87,10 +73,8 @@ export const chatRouter = router({
         }
 
         // Use database transaction to ensure consistency
-        console.log('Starting database transaction...');
         const dbResult = await ctx.db.$transaction(async (tx) => {
           // Save user message to database
-          console.log('Creating user message...');
           const userMessage = await tx.message.create({
             data: {
               conversationId,
@@ -99,7 +83,6 @@ export const chatRouter = router({
               tokens: Math.ceil(content.length / 4), // Rough token estimation
             },
           });
-          console.log('User message created:', userMessage.id);
 
           // Check if this is the first message in the conversation
           const messageCount = await tx.message.count({
@@ -127,7 +110,6 @@ export const chatRouter = router({
           }
 
           // Save assistant message to database
-          console.log('Creating assistant message...');
           const assistantMessage = await tx.message.create({
             data: {
               conversationId,
@@ -136,11 +118,9 @@ export const chatRouter = router({
               tokens: Math.ceil(response.length / 4),
             },
           });
-          console.log('Assistant message created:', assistantMessage.id);
 
           return { userMessage, assistantMessage };
         });
-        console.log('Database transaction completed');
 
         return {
           id: dbResult.assistantMessage.id,

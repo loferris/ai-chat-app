@@ -155,8 +155,8 @@ describe('Messages Router', () => {
       });
 
       const mockMessages = [
-        { id: 'msg-1', content: 'First message', createdAt: new Date('2024-01-01T10:00:00Z') },
-        { id: 'msg-2', content: 'Second message', createdAt: new Date('2024-01-01T11:00:00Z') },
+        { id: 'msg-1', role: 'user', content: 'First message', createdAt: new Date('2024-01-01T10:00:00Z') },
+        { id: 'msg-2', role: 'assistant', content: 'Second message', createdAt: new Date('2024-01-01T11:00:00Z') },
       ];
 
       mockContext.db.message.findMany.mockResolvedValue(mockMessages);
@@ -164,7 +164,24 @@ describe('Messages Router', () => {
       const caller = messagesRouter.createCaller(mockContext);
       const result = await caller.getByConversation(input);
 
-      expect(result).toEqual(mockMessages);
+      expect(result).toEqual([
+        {
+          id: 'msg-1',
+          role: 'user',
+          content: 'First message',
+          timestamp: new Date('2024-01-01T10:00:00Z'),
+          model: undefined,
+          cost: undefined,
+        },
+        {
+          id: 'msg-2',
+          role: 'assistant', 
+          content: 'Second message',
+          timestamp: new Date('2024-01-01T11:00:00Z'),
+          model: undefined,
+          cost: undefined,
+        },
+      ]);
       expect(mockContext.db.message.findMany).toHaveBeenCalledWith({
         where: { conversationId: 'conv-123' },
         orderBy: { createdAt: 'asc' },

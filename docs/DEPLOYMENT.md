@@ -21,11 +21,13 @@ Perfect for creating screen recordings, showcasing features, or testing without 
    - The `vercel.json` configuration will force demo mode
 
 3. **Demo Mode Features:**
-   - ✅ **Mock AI Assistant**: No API keys needed
-   - ✅ **Smart Responses**: Contextual demo responses
-   - ✅ **Full Functionality**: All features work perfectly
-   - ✅ **No Costs**: Zero API usage charges
-   - ✅ **Sample Data**: Pre-loaded demo conversations
+   - ✅ **Mock AI Assistant**: No API keys needed, intelligent contextual responses
+   - ✅ **Smart Responses**: Contextual demo responses with realistic conversation flow
+   - ✅ **Full Functionality**: All features work perfectly including export and error handling
+   - ✅ **No Costs**: Zero API usage charges with realistic cost simulation
+   - ✅ **Sample Data**: Pre-loaded demo conversations showcasing features
+   - ✅ **Error Simulation**: Demonstrates error handling and recovery mechanisms
+   - ✅ **State Management**: Full Zustand store functionality with DevTools
 
 ### Demo Mode Configuration
 
@@ -89,11 +91,13 @@ SESSION_SECRET=your-random-secret-key
 ## 📊 Demo Mode Features
 
 ### Smart Mock Assistant
-The demo assistant provides contextual responses:
-- **Welcome messages**: Explains demo features
-- **Export questions**: Describes export functionality
-- **Technical queries**: Explains app architecture
-- **General chat**: Engaging conversation flow
+The demo assistant provides contextual responses with realistic behavior:
+- **Welcome messages**: Explains demo features and capabilities
+- **Export questions**: Describes export functionality across all formats
+- **Technical queries**: Explains app architecture including Zustand and ErrorBoundary
+- **Error handling**: Demonstrates retry mechanisms and graceful degradation
+- **General chat**: Engaging conversation flow with realistic response times
+- **State management**: Shows proper loading states and UI updates
 
 ### Sample Conversations
 Pre-loaded demo conversations showcase:

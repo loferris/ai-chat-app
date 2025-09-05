@@ -56,13 +56,21 @@ export default async function health(req: NextApiRequest, res: NextApiResponse<H
     res.status(httpStatus).json(response);
     
   } catch (error) {
+    let uptime = 0;
+    try {
+      uptime = process.uptime();
+    } catch (uptimeError) {
+      // If we can't get uptime, use 0 as default
+      console.error('Failed to get process uptime:', uptimeError);
+    }
+    
     const duration = Date.now() - startTime;
     logger.error('Health check failed', error instanceof Error ? error : new Error(String(error)), { duration });
     
     res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
+      uptime,
       database: 'error',
       error: 'Health check failed',
     });

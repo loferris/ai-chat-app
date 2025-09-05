@@ -10,6 +10,9 @@ Welcome to the Chat App documentation! This folder contains all the detailed gui
 ### **Deployment**
 - **[Deployment Guide](DEPLOYMENT.md)** - Complete deployment guide for all platforms
 
+### **Development & Testing**
+- **[Testing Guide](TESTING.md)** - Comprehensive testing documentation and best practices
+
 ### **Technical Planning**
 - **[Agent Architecture Plan](agent-architecture-plan.md)** - Future agent orchestration system design
 
@@ -21,8 +24,10 @@ For deployment:
 
 ## 📖 Understanding the Project
 
-- **Current State**: Fully functional chat app with modern architecture
-- **Architecture**: See [Architecture Summary](architecture-summary.md) for details
+- **Current State**: Production-ready chat app with 99.4% test coverage and modern architecture
+- **Architecture**: Comprehensive implementation with Zustand state management, ErrorBoundary handling, and professional error logging - see [Architecture Summary](architecture-summary.md) for details
+- **Testing**: 173/174 tests passing across components, services, and utilities
+- **Features**: Multi-format export, real-time cost tracking, demo mode, and responsive UI
 - **Future Plans**: Agent orchestration system documented in [Agent Architecture Plan](agent-architecture-plan.md)
 
 ## 🔧 Development

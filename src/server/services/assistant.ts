@@ -128,19 +128,32 @@ export class OpenRouterAssistant implements Assistant {
 
   private selectModel(): string {
     try {
-      // Simple model selection logic
-      const models = ['deepseek-chat', 'anthropic/claude-3-haiku'];
-      const randomIndex = Math.floor(Math.random() * models.length);
-      return models[randomIndex];
+      // Use the model from environment or default to Claude Haiku
+      const envModel = process.env.OPENROUTER_MODEL;
+      if (envModel) {
+        return envModel;
+      }
+      
+      // Valid OpenRouter models (fast and cost-effective)
+      const validModels = [
+        'anthropic/claude-3-haiku',
+        'anthropic/claude-3-sonnet',
+        'meta-llama/llama-3.1-8b-instruct',
+        'openai/gpt-4o-mini'
+      ];
+      
+      // Default to Claude Haiku (fastest and cheapest)
+      return validModels[0];
     } catch (error) {
       console.error('Error selecting model:', error);
-      return 'deepseek-chat'; // Fallback model
+      return 'anthropic/claude-3-haiku'; // Safe fallback
     }
   }
 
   private async fetchResponse(
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-    model: string
+    model: string,
+    retryCount = 0
   ): Promise<string> {
     const startTime = Date.now();
     
@@ -150,11 +163,18 @@ export class OpenRouterAssistant implements Assistant {
         return 'This is a client-side fallback response. Please use the server-side API.';
       }
 
-      // Create AbortController for timeout
+      // Create AbortController for timeout (increased for Claude models)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for real AI
 
       try {
+        const requestBody = {
+          model,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1000,
+        };
+
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -163,30 +183,43 @@ export class OpenRouterAssistant implements Assistant {
             'HTTP-Referer': this.getDefaultSiteName(),
             'X-Title': this.siteName,
           },
-          body: JSON.stringify({
-            model,
-            messages,
-            temperature: 0.7,
-            max_tokens: 1000,
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          // Don't include potentially sensitive error details in logs
-          console.error(`OpenRouter API error: ${response.status}`);
-          throw new Error(`OpenRouter API error: ${response.status}`);
+          const errorText = await response.text();
+          console.error('OpenRouter API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText
+          });
+          
+          // Provide specific error messages based on status
+          if (response.status === 401) {
+            throw new Error('Invalid API key. Please check your OpenRouter API key configuration.');
+          } else if (response.status === 402) {
+            throw new Error('Insufficient credits. Please check your OpenRouter account balance.');
+          } else if (response.status === 429) {
+            throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
+          } else if (response.status >= 500) {
+            throw new Error('OpenRouter service is temporarily unavailable. Please try again in a moment.');
+          } else {
+            throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+          }
         }
 
         const data = await response.json();
         
         if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+          console.error('Invalid OpenRouter response format:', data);
           throw new Error('Invalid response format from OpenRouter API');
         }
 
-        return data.choices[0].message.content;
+        const content = data.choices[0].message.content;
+        return content;
       } catch (error) {
         clearTimeout(timeoutId);
         
@@ -199,6 +232,27 @@ export class OpenRouterAssistant implements Assistant {
     } catch (error) {
       const duration = Date.now() - startTime;
       logger.assistantRequest(model, 0, 0, duration, error instanceof Error ? error : new Error(String(error)));
+      
+      // Retry logic for transient errors
+      const maxRetries = 2;
+      if (retryCount < maxRetries && error instanceof Error) {
+        const errorMsg = error.message.toLowerCase();
+        const isRetryable = errorMsg.includes('rate limit') || 
+                           errorMsg.includes('timeout') || 
+                           errorMsg.includes('network') ||
+                           errorMsg.includes('500') ||
+                           errorMsg.includes('502') ||
+                           errorMsg.includes('503');
+        
+        if (isRetryable) {
+          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+          console.log(`Retrying OpenRouter request in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.fetchResponse(messages, model, retryCount + 1);
+        }
+      }
+      
       throw error;
     }
   }
@@ -207,10 +261,11 @@ export class OpenRouterAssistant implements Assistant {
     try {
       const tokens = Math.ceil(response.length / 4); // Rough token estimation
       const costPerToken: Record<string, number> = {
-        'deepseek-chat': 0.0000001,
         'anthropic/claude-3-haiku': 0.00000025,
         'anthropic/claude-3-sonnet': 0.000003,
         'anthropic/claude-3-opus': 0.000015,
+        'meta-llama/llama-3.1-8b-instruct': 0.0000002,
+        'openai/gpt-4o-mini': 0.00000015,
       };
 
       return tokens * (costPerToken[model] || 0.000001);

@@ -44,6 +44,7 @@ describe('Chat Router', () => {
         message: {
           create: vi.fn(),
           count: vi.fn(),
+          findMany: vi.fn().mockResolvedValue([]), // Default empty history
         },
         $transaction: vi.fn(),
       },
@@ -63,10 +64,19 @@ describe('Chat Router', () => {
         title: 'Test Conversation',
       });
 
+      // Mock conversation history
+      mockContext.db.message = {
+        ...mockContext.db.message,
+        findMany: vi.fn().mockResolvedValue([
+          { role: 'user', content: 'Previous message', createdAt: new Date() },
+          { role: 'assistant', content: 'Previous response', createdAt: new Date() },
+        ]),
+      };
+
       // Mock assistant response
       mockAssistant.getResponse.mockResolvedValue({
         response: 'Hello! How can I help you?',
-        model: 'deepseek-chat',
+        model: 'anthropic/claude-3-haiku',
         cost: 0.0001,
       });
 
@@ -94,9 +104,18 @@ describe('Chat Router', () => {
         content: 'Hello! How can I help you?',
         role: 'assistant',
         timestamp: expect.any(Date),
-        model: 'deepseek-chat',
+        model: 'anthropic/claude-3-haiku',
         cost: 0.0001,
       });
+
+      // Verify conversation history was passed to assistant
+      expect(mockAssistant.getResponse).toHaveBeenCalledWith(
+        validInput.content,
+        expect.arrayContaining([
+          expect.objectContaining({ role: 'user', content: 'Previous message' }),
+          expect.objectContaining({ role: 'assistant', content: 'Previous response' }),
+        ])
+      );
 
       expect(mockContext.db.$transaction).toHaveBeenCalledTimes(1);
     });
@@ -156,7 +175,7 @@ describe('Chat Router', () => {
 
       const caller = chatRouter.createCaller(mockContext);
       
-      await expect(caller.sendMessage(validInput)).rejects.toThrow('Failed to send message. Please try again.');
+      await expect(caller.sendMessage(validInput)).rejects.toThrow('Something went wrong. Please try again.');
     });
 
     it('handles database errors gracefully', async () => {
@@ -178,7 +197,7 @@ describe('Chat Router', () => {
 
       const caller = chatRouter.createCaller(mockContext);
       
-      await expect(caller.sendMessage(validInput)).rejects.toThrow('Failed to send message. Please try again.');
+      await expect(caller.sendMessage(validInput)).rejects.toThrow('Something went wrong. Please try again.');
     });
 
     it('calculates token count correctly', async () => {

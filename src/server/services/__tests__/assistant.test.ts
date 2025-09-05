@@ -77,7 +77,7 @@ describe('Assistant Service', () => {
         expect(fetch).toHaveBeenCalled();
       });
 
-      it('selects models with weighted distribution', async () => {
+      it('selects valid OpenRouter models', async () => {
         const userMessage = 'Test message';
         const mockResponse = {
           choices: [{ message: { content: 'Test response' } }],
@@ -88,21 +88,47 @@ describe('Assistant Service', () => {
           json: () => Promise.resolve(mockResponse),
         });
 
-        // Test multiple calls to see model distribution
+        // Test multiple calls to see model selection
         const results = await Promise.all([
-          assistant.getResponse(userMessage),
-          assistant.getResponse(userMessage),
           assistant.getResponse(userMessage),
           assistant.getResponse(userMessage),
           assistant.getResponse(userMessage),
         ]);
 
         const models = results.map(r => r.model);
-        const deepseekCount = models.filter(m => m === 'deepseek-chat').length;
-        const claudeCount = models.filter(m => m === 'anthropic/claude-3-haiku').length;
+        const validModels = [
+          'anthropic/claude-3-haiku',
+          'anthropic/claude-3-sonnet', 
+          'meta-llama/llama-3.1-8b-instruct',
+          'openai/gpt-4o-mini'
+        ];
 
-        // Should have both models (roughly 60% deepseek, 40% claude)
-        expect(deepseekCount + claudeCount).toBe(5);
+        // All models should be from the valid list
+        models.forEach(model => {
+          expect(validModels).toContain(model);
+        });
+      });
+
+      it('uses model from environment variable when available', async () => {
+        const originalEnvModel = process.env.OPENROUTER_MODEL;
+        process.env.OPENROUTER_MODEL = 'anthropic/claude-3-sonnet';
+
+        const userMessage = 'Test message';
+        const mockResponse = {
+          choices: [{ message: { content: 'Test response' } }],
+        };
+
+        (fetch as any).mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve(mockResponse),
+        });
+
+        const result = await assistant.getResponse(userMessage);
+
+        expect(result.model).toBe('anthropic/claude-3-sonnet');
+
+        // Restore environment
+        process.env.OPENROUTER_MODEL = originalEnvModel;
       });
 
       it('handles API errors gracefully', async () => {
@@ -114,7 +140,7 @@ describe('Assistant Service', () => {
         (fetch as any).mockResolvedValueOnce({
           ok: false,
           status: 429,
-          json: () => Promise.resolve(errorResponse),
+          text: () => Promise.resolve(JSON.stringify(errorResponse)),
         });
 
         const result = await assistant.getResponse(userMessage);
@@ -122,6 +148,30 @@ describe('Assistant Service', () => {
         expect(result.response).toContain('Sorry, I encountered an error');
         expect(result.model).toBe('error');
         expect(result.cost).toBe(0);
+      });
+
+      it('retries on transient errors', async () => {
+        const userMessage = 'Test message';
+        
+        // First call fails with rate limit
+        (fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          text: () => Promise.resolve('{"error":{"message":"Rate limit exceeded"}}'),
+        });
+
+        // Second call succeeds
+        (fetch as any).mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            choices: [{ message: { content: 'Success after retry' } }],
+          }),
+        });
+
+        const result = await assistant.getResponse(userMessage);
+
+        expect(result.response).toBe('Success after retry');
+        expect(fetch).toHaveBeenCalledTimes(2);
       });
 
       it('handles network errors gracefully', async () => {

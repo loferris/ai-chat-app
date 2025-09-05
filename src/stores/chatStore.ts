@@ -70,25 +70,31 @@ export const useChatStore = create<ChatState>()(
         lastFailedMessage: '' 
       }, false, 'resetRetry'),
       
-      startMessageSend: (message) => set({ 
-        input: '',
-        error: null,
-        isLoading: true,
-        lastFailedMessage: message
-      }, false, 'startMessageSend'),
+      startMessageSend: (message) => {
+        set({ 
+          input: '',
+          error: null,
+          isLoading: true,
+          lastFailedMessage: message
+        }, false, 'startMessageSend');
+      },
       
-      finishMessageSend: () => set({ 
-        isLoading: false,
-        retryCount: 0,
-        lastFailedMessage: '',
-        error: null
-      }, false, 'finishMessageSend'),
+      finishMessageSend: () => {
+        set({ 
+          isLoading: false,
+          retryCount: 0,
+          lastFailedMessage: '',
+          error: null
+        }, false, 'finishMessageSend');
+      },
       
-      handleMessageError: (error) => set((state) => ({ 
-        isLoading: false,
-        error,
-        retryCount: state.retryCount + 1
-      }), false, 'handleMessageError'),
+      handleMessageError: (error) => {
+        set((state) => ({ 
+          isLoading: false,
+          error,
+          retryCount: state.retryCount + 1
+        }), false, 'handleMessageError');
+      },
     }),
     {
       name: 'chat-store', // DevTools name
